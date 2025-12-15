@@ -5,15 +5,12 @@ _processes = {}
 def _update_progress(proc_id : int):
 	proc = _processes[proc_id]["process"]
 	while proc.poll() == None:
-		line = proc.stderr.readline() # Don't ask me why wget outputs status info to stderr
-		if not line:
-			line = proc.stdout.readline()
-		line = line.decode().strip()
-		
+		line = proc.stderr.readline().decode().strip() # Don't ask me why wget outputs status info to stderr
+		_processes[proc_id]["log"] += [line]
 		prog_match = re.match(r".* ([0-9]+)% .*", line)
 		if prog_match:
 			_processes[proc_id]["progress"] = int(prog_match.group(1))
-	
+
 	_processes[proc_id]["status"] = "error" if proc.returncode else "success"
 	print("-- Finished download ID", proc_id, "with return code", proc.returncode)
 
@@ -40,7 +37,9 @@ def main(args : dict):
 		_processes[proc_id] = {
 			"process": subprocess.Popen(proc_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE),
 			"progress": 0,
-			"status": "running"
+			"status": "running",
+			"log": [],
+			"user": args["user"]
 		}
 		threading.Thread(target=_update_progress, args=(proc_id, )).start()
 		print("-- Started download with ID", proc_id, "to", args["ap"])
@@ -52,9 +51,16 @@ def main(args : dict):
 	if action == "wget.status" and "id" in cmd:
 		proc_id = cmd.get("id")
 		proc = _processes.get(proc_id)
-		if not proc:
-			return {"stdout": '{"error": "invalid id"}'}
+		if not proc or proc["user"] != args["user"]:
+			return {"stdout": '{"error": "can\'t access download"}'}
+		
 		# Clear process data after being queried once
 		if proc["status"] != "running":
 			_processes.pop(proc_id)
-		return {"stdout": '{"progress": %i, "status": "%s"}' % (proc["progress"], proc["status"])}
+		
+		return {
+			"stdout": json.dumps({
+			"progress": proc["progress"],
+			"status": proc["status"],
+			"log": proc["log"]}
+		)}

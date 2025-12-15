@@ -26,8 +26,9 @@ An improved plugin to directly download files off the internet onto copyparty.
 - multiple downloads at the same time
 - progress indicator
 - hidden from users that don't have write permissions
+- provides wget error logs when download fails
 
-## TODOs
+### TODOs
 
-- provide error logs when wget crashes
-- upgrade to an up2k-like progress bar
+- [x] provide error logs when wget crashes
+- [ ] upgrade to an up2k-like progress bar
